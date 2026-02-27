@@ -1,0 +1,88 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'           # 推送 v0.0.1 这类 tag 时触发
+  workflow_dispatch:   # 也支持手动触发
+
+permissions:
+  contents: write      # 允许创建 Release 和上传文件
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }}/${{ matrix.arch }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            suffix: linux-amd64
+          - os: linux
+            arch: arm64
+            suffix: linux-arm64
+          - os: windows
+            arch: amd64
+            suffix: windows-amd64.exe
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Go 环境
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+
+      - name: 构建服务端二进制
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: '0'
+        run: |
+          go build -trimpath -ldflags="-s -w" \
+            -o anytls-server-${{ matrix.suffix }} \
+            ./cmd/server/
+
+      - name: 构建客户端二进制
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: '0'
+        run: |
+          go build -trimpath -ldflags="-s -w" \
+            -o anytls-client-${{ matrix.suffix }} \
+            ./cmd/client/
+
+      - name: 上传构建产物（供后续 release job 使用）
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.suffix }}
+          path: |
+            anytls-server-${{ matrix.suffix }}
+            anytls-client-${{ matrix.suffix }}
+          retention-days: 1
+
+  release:
+    name: 发布到 GitHub Releases
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载所有构建产物
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: 查看产物列表
+        run: ls -lh dist/
+
+      - name: 创建/更新 GitHub Release 并上传文件
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          draft: false
+          prerelease: false
+          generate_release_notes: true  # 自动从 commit 生成 changelog
