@@ -17,6 +17,27 @@
 
 为了方便，示例服务器和客户端默认采用不安全的配置，该配置假设您不会遭遇 TLS 中间人攻击（这种情况偶尔发生在网络接入层，在骨干网络上几乎不可能实现）；否则，您的通信内容可能会被中间人截获。
 
+### 一键安装（推荐，Linux）
+
+提供自动化安装脚本，自动检测系统架构，下载最新版二进制，并配置为 systemd / OpenRC 系统服务。
+
+```bash
+bash <(wget -qO- https://raw.githubusercontent.com/code-gopher/anytls-go/main/install.sh) \
+  --apiHost=https://your-panel.example.com \
+  --apiKey=YOUR_API_KEY \
+  --nodeID=1
+```
+
+安装完成后使用以下命令管理服务：
+
+```bash
+systemctl status anytls    # 查看状态
+journalctl -u anytls -f   # 查看实时日志
+systemctl restart anytls  # 重启
+```
+
+---
+
 ### 示例服务器（普通密码模式）
 
 ```
