@@ -150,7 +150,12 @@ func (c *Client) PushTraffic(records []TrafficRecord) error {
 		return nil
 	}
 
-	data, err := json.Marshal(records)
+	payload := make(map[int][2]int64, len(records))
+	for _, record := range records {
+		payload[record.UserID] = [2]int64{record.Upload, record.Download}
+	}
+
+	data, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("序列化流量数据失败: %w", err)
 	}
